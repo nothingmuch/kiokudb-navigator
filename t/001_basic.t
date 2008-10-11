@@ -36,6 +36,7 @@ use KiokuDB;
         metaclass => 'Collection::Array',
         is        => 'rw', 
         isa       => 'ArrayRef[Person]',
+        lazy      => 1,
         default   => sub { [] },
         provides  => {
             'push' => 'add_child'
@@ -60,11 +61,10 @@ use KiokuDB;
     has [ 'make', 'model', 'vin' ] => (is => 'rw');
 }
 
-my $db = KiokuDB->connect("bdb:dir=data", create => 1); 
-
 my $root_id;
 
 {
+    my $db = KiokuDB->connect("bdb:dir=data", create => 1);     
     
     my $s = $db->new_scope;
 
@@ -89,7 +89,7 @@ my $root_id;
 }
 
 my $n = KiokuDB::Navigator->new(
-    db       => $db,
+    db       => KiokuDB->connect("bdb:dir=data"),
     doc_root => [ $FindBin::Bin, '..', 'doc_root' ],
     root_id  => $root_id,
 );
