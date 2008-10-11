@@ -1,0 +1,124 @@
+<html>
+<head>
+<link rel="stylesheet" href="css/style.css" type="text/css" />
+<script language="javascript" src="js/jquery-1.2.6.js"></script>
+<script language="javascript" src="js/jquery.dimensions.js"></script>
+<script language="javascript" src="js/jquery.easydrag.js"></script>
+<script language="javascript" src="js/json2.js"></script>
+<script language="javascript" src="js/JSORB.js"></script>
+<script language="javascript">
+
+var c = new JSORB.Client ({
+    base_url       : 'http://localhost:9999/', 
+    base_namespace : '/kiokudb/navigator/' 
+});
+
+function lookup (id, callback) {
+    c.call(
+        { method : 'lookup', params : [ id ] }, 
+        callback   
+    );
+}
+
+$(document).ready(function () {
+    $('.widget_control').toggle(
+        function () {
+            $(this).html("&#x2193;");
+            $(this).parent().find('.widget_container').hide();
+        },
+        function () {
+            $(this).html("&#x2191;");
+            $(this).parent().find('.widget_container').show();            
+        }        
+    );
+    
+});
+
+function create_object_link (ref_id, label) {    
+    return '<a id="' + ref_id + '" class="loader" href="#">' + label + '</a><ul class="hidden"></ul>';
+}
+
+function load_object (container, id) {
+    
+    if (container == undefined) {
+        var holder = $(
+            '<div class="navigator_container">' 
+            + '<div class="navigator_handle">' 
+            + '<a href="#" onclick="$(this).parent().parent().remove()">[ x ]</a>&nbsp;' 
+            + (id == '' ? 'root' : id) 
+            + '</div>'
+            + '<ul class="object_container" id="' + id + '"></ul>'
+            + '</div>'
+        );
+    
+        $(document.body).append(holder);
+        
+        $('.navigator_handle', holder).toggle(
+            function () { $('.object_container', $(this).parent()).hide() },
+            function () { $('.object_container', $(this).parent()).show() }            
+        );
+        
+        container = $('.object_container', holder);
+    }
+    
+    lookup(id, function (obj) {
+        var out = '';
+
+        for (var prop in obj) {
+            out += '<li><div class="label">' + prop + '</div><div class="value">';
+            //console.log(obj[prop].constructor);
+            switch (obj[prop].constructor) {
+                case Object:
+                    out += create_object_link( obj[prop]['$ref'], '[ + ]' );
+                    break;
+                case Array:
+                    out += '<ul class="collection">';
+                    for (var i = 0; i < obj[prop].length; i++) {
+                        out += '<li><div class="value">'
+                            + create_object_link( obj[prop][i]['$ref'], '[ ' + i + ' ]' )
+                            + '</div></li>';
+                    }
+                    out += '</ul>';
+                    break;
+                default:
+                    if (prop == 'id') {
+                        out += obj[prop] 
+                            + '&nbsp;<a href="#" onclick="load_object( undefined, \'' 
+                            + obj[prop] 
+                            + '\')">[ ⇗ ]</a>';                        
+                    }
+                    else {
+                        out += obj[prop];                        
+                    }
+            }
+            out += "</div></li>"
+        }
+
+        $(container).html(out);
+
+        $('.loader', container).click(function () {
+            var id = $(this).attr('id');
+            load_object( $(this).siblings('ul'), id );
+            $(this).siblings('ul').removeClass('hidden');
+            $(this).unbind('click');
+            $(this).click(function () {
+                $(this).siblings('ul').toggle()
+            });
+        })
+    });
+}
+
+
+</script>
+</head>
+<body>
+<div class="widget">
+    <div class="widget_container">    
+        <div class="widget_label">Lookup By ID</div>
+        <input type="text" id="lookup" size="36" />
+        <input type="button" value="lookup" onclick="load_object( undefined, $('#lookup').val() )" />
+    </div>
+    <div class="widget_control">&#x2191;</div>
+</div>
+</body>
+</html>
